@@ -4,8 +4,14 @@ An Android app that stores, organizes and health-checks **Nostr Wallet Connect
 (NIP-47) connection strings** from any wallet, in one encrypted place on the
 phone. It is an inventory and health tool, not a wallet.
 
-**Status: before Milestone 0. There is no code yet.** Nothing gets built until
-Reed has approved `THREAT_MODEL.md`, `PLAN.md` and `DEPENDENCIES.md`.
+**Status: Milestone 0 drafted 2026-10-04, awaiting Reed's approval. There is no
+code yet.** Nothing gets built until he has approved `THREAT_MODEL.md`,
+`PLAN.md` and `DEPENDENCIES.md`; the decisions he owes are the table at the top
+of `PLAN.md`.
+
+**No real connection string ever goes into a chat, a test, a fixture or this
+box.** Wallet tests here run against a fake wallet and fake relay; real
+connections exist only in the app on Reed's phone.
 
 The idea the app exists for: one connection per *purpose* ("Nostr zaps",
 "Podcasting"), pasted into every app that serves that purpose, each with its own
