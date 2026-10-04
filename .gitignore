@@ -1,0 +1,39 @@
+# --- Handoff notes: local working files, never public content ---
+# Same rule as Reed's other repos. What is worth keeping from one belongs in
+# CLAUDE.md or in the project docs (PLAN.md, THREAT_MODEL.md).
+*HANDOFF*.md
+*handoff*.md
+
+# --- Claude Code local settings ---
+# Machine-specific paths and permission allowlists; never committed.
+.claude/settings.json
+.claude/settings.local.json
+.claude/settings.local.json.tmp.*
+
+# --- Signing keys and credentials: never committed, no exceptions ---
+*.jks
+*.keystore
+*.p12
+*.pem
+keystore.properties
+signing.properties
+google-services.json
+
+# --- Android / Gradle build output and machine-local config ---
+local.properties
+.gradle/
+build/
+**/build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+.kotlin/
+
+# --- IDE and OS ---
+.idea/
+*.iml
+.DS_Store
