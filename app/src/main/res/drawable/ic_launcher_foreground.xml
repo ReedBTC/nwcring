@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A key ring with two keys hanging from it. Drawn inside the 66dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M54,30a14,14 0,1 0,0.01 0z"
+        android:strokeWidth="5"
+        android:strokeColor="#F5A623" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M46,56L40,78M40,78l5,1.4M41.6,72l5,1.4"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeColor="#F2F2F2" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M62,56L68,78M68,78l-5,1.4M66.4,72l-5,1.4"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeColor="#F2F2F2" />
+</vector>

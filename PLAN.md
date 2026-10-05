@@ -1,6 +1,7 @@
 # NWC Ring — Plan
 
-**Decisions recorded 2026-10-05. Milestone 1 is under way.** Versions and library facts below were looked up on 2026-10-04.
+**Milestone 1 is built and tested on the emulator (2026-10-05); the test on
+Reed's Pixel 6a is next.** Versions and library facts below were looked up on 2026-10-04.
 
 ## Decisions
 
@@ -9,13 +10,13 @@ Settled by Reed on 2026-10-05.
 | # | Decision | Outcome |
 |---|---|---|
 | 1 | Which Nostr library | **Quartz**, pinned to one release. See "The Nostr library" below |
-| 2 | Oldest Android version supported | **Android 11.** Reed's phones are a Pixel 6 (the test phone) and a Pixel 8 (daily), both far newer |
+| 2 | Oldest Android version supported | **Android 11.** Reed's phones are a Pixel 6a (the test phone) and a Pixel 8 (daily), both far newer |
 | 3 | Package name | **`com.nwcring.app`**, named for the project rather than for Reed. Background below |
 | 4 | License | **MIT** |
 | 5 | Backup | **No backup of secrets.** An export of the inventory only (names, wallets, "used in", no secrets) comes later |
-| 6 | How test builds reach the phone | **Installed straight onto the Pixel 6 over USB from this box.** GitHub Releases from Milestone 5, which is how the Pixel 8 and everyone else gets it |
+| 6 | How test builds reach the phone | **Installed straight onto the Pixel 6a over USB from this box.** GitHub Releases from Milestone 5, which is how the Pixel 8 and everyone else gets it |
 | 7 | The signing key | Created on this box at Milestone 1, stored outside the repo. Reed keeps an offline copy and its password; exact steps come with the key |
-| 8 | Emulator and test phone | **Both.** The emulator runs the automated tests unattended. The Pixel 6 is the real thing: a real secure chip and a real fingerprint sensor |
+| 8 | Emulator and test phone | **Both.** The emulator runs the automated tests unattended. The Pixel 6a is the real thing: a real secure chip and a real fingerprint sensor |
 
 Defaults in force unless Reed objects: auto-lock after 60 seconds idle and
 immediately when the app leaves the screen; clipboard cleared 60 seconds after
@@ -173,12 +174,12 @@ bypassed:
   screen. The encryption tests the brief asks for can only run on Android,
   because the secure key store does not exist anywhere else, and the emulator
   lets them run unattended. It also lets me see the screens I build.
-- **The Pixel 6, plugged into this box,** is where builds get installed and
+- **The Pixel 6a, plugged into this box,** is where builds get installed and
   where the real secure chip and fingerprint sensor get exercised. It runs in
   developer mode for this. **While it does, keep only small-budget connections
   on it.** The Pixel 8 gets the app the normal way at Milestone 5 and never
   needs developer mode.
-- **You test on the Pixel 6** after each milestone, with written steps.
+- **You test on the Pixel 6a** after each milestone, with written steps.
 
 ## Milestones
 
@@ -219,6 +220,39 @@ installing. Its usage analytics are off.
   2026-09-11. Wallets that support it do so by convention.
 - **Exact tool versions.** The versions in `DEPENDENCIES.md` are what was
   current on 2026-10-04 and get confirmed when the first build runs.
+
+## Milestone 1: what was built, and where it differs from this plan
+
+Built: the app skeleton, the lock, the encrypted vault, add by pasting, the
+list, delete. 62 automated tests run on the build box and 2 more run against the
+real Android key store on the emulator; all pass. The release build was run on
+the emulator end to end.
+
+Differences from the plan above, all in the direction of less:
+
+- **The unlock prompt is Android's own, with no library.** The plan listed
+  Google's Biometric library; with Android 11 as the minimum it adds nothing.
+- **No DataStore library.** The inventory is one file, written to a temporary
+  file and swapped in.
+- **The app has no network permission at all yet.** It arrives with Milestone 3.
+  A build check fails if it appears earlier.
+- **The hardware window is 30 seconds.** The secure hardware uses the key only
+  within 30 seconds of a fingerprint, face or PIN check. In practice: unlocking
+  the app, then taking longer than that to paste and name a connection, means
+  one more fingerprint touch when saving.
+- **Locking happens the instant the app leaves the screen.** The first version
+  waited for Android's "stopped" signal, which on the emulator arrived a second
+  or two late, long enough to switch away and back and find the app still open.
+  Testing caught it; it now locks on the earlier "paused" signal.
+- **Debug builds allow screenshots; release builds never do.** That is how the
+  screens get checked during development. Only release builds go on a phone.
+- **Built against Android 17 libraries, behaving as an Android 16 app.** The
+  newest Compose requires the former; the latter matches what the emulator
+  runs. Revisit once the Pixel 6a's Android version is known.
+
+Found and fixed by the automatic code checker before it could matter: on
+Android 11 and 12 the code that recognises "the hardware wants a fresh unlock"
+referred to something that only exists from Android 13.
 
 ## Where this plan departs from the brief
 

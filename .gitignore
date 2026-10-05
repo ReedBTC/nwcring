@@ -37,3 +37,6 @@ captures/
 .idea/
 *.iml
 .DS_Store
+
+# --- Gradle's own reports ---
+/build/

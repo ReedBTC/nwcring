@@ -1,8 +1,9 @@
 # NWC Ring — Threat Model
 
-**Draft for Reed's review, 2026-10-04. Nothing is built yet.** This says what
-the app protects, from whom, what it cannot protect against, and what is left
-over in each case. It is written to be read without the code.
+Approved by Reed as part of Milestone 0, 2026-10-05. This says what the app
+protects, from whom, what it cannot protect against, and what is left over in
+each case. It is written to be read without the code. Parts that describe
+features not built yet (copying out, health checks) say what the app will do.
 
 ## The short version
 
@@ -59,8 +60,8 @@ wallets, no secrets); see the open decisions in `PLAN.md`.
 
 ### The phone is taken while unlocked and the app is open
 
-The app locks itself after a short idle time and the moment it leaves the
-screen. Seeing or copying a secret asks for your fingerprint or PIN again, every
+The app locks itself after 60 seconds without a touch and the moment it leaves
+the screen. Seeing or copying a secret asks for your fingerprint or PIN again, every
 time, even when the app is already open.
 
 *Left over:* the names, purposes and "used in" lists are visible while the app
@@ -144,8 +145,11 @@ The plausible bugs, and what stands in front of each:
   automated check fails the build if any other code tries to log directly. There
   is no crash-reporting service; nothing is sent anywhere.
 - *The lock screen has a hole.* The lock is not only a screen the app draws. The
-  secure hardware itself refuses to decrypt without a recent authentication, so
-  a bug in the app's screens does not by itself hand over the secrets.
+  secure hardware itself refuses to use the key unless you authenticated in the
+  last 30 seconds, so a bug in the app's screens does not by itself hand over
+  the secrets. One honest limit: unlocking the *phone* also counts as
+  authenticating, so for 30 seconds after the phone is unlocked the hardware
+  gate is open and the app's own lock is the only barrier.
 - *The app spends money by mistake.* The code that talks to wallets is wrapped
   so that only four read-only questions can be asked at all, and an automated
   check fails the build if any payment-related call appears anywhere in the app.
@@ -174,8 +178,9 @@ decision in `PLAN.md`.
 
 The app is built from other people's libraries, and one of them could ship a
 bad version. Versions are pinned (an update never arrives on its own),
-`DEPENDENCIES.md` lists every one and why it is there, and the app holds only
-the internet permission, so there is little else for bad code to reach.
+`DEPENDENCIES.md` lists every one and why it is there, and the app asks for
+almost nothing: permission to show the fingerprint prompt and, from Milestone 3,
+internet access. There is little else for bad code to reach.
 
 *Left over:* a pinned version that was already bad when it was chosen. Keeping
 the list short is the main defence, and the library choice in `PLAN.md` is a

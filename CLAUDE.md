@@ -4,8 +4,10 @@ An Android app that stores, organizes and health-checks **Nostr Wallet Connect
 (NIP-47) connection strings** from any wallet, in one encrypted place on the
 phone. It is an inventory and health tool, not a wallet.
 
-**Status: Milestone 1 in progress (Reed's go, 2026-10-05).** Decisions are in the
-table at the top of `PLAN.md`. The package name is `com.nwcring.app`.
+**Status: Milestone 1 is built and passes on the emulator (2026-10-05). It still
+has to be installed and tried on Reed's Pixel 6a before it counts as done.**
+Decisions are in the table at the top of `PLAN.md`. The package name is
+`com.nwcring.app`.
 
 **No real connection string ever goes into a chat, a test, a fixture or this
 box.** Wallet tests here run against a fake wallet and fake relay; real
@@ -87,6 +89,47 @@ rotation helper → **M5** hardening. After each one Reed gets a plain-English
 summary (what works, what changed, what deviated from the plan) and step-by-step
 install instructions that assume he has never sideloaded an APK. A leak-hunting
 review goes into `SECURITY_REVIEW.md` at M5, and ideally after M2.
+
+## Layout and the three chokepoints
+
+`app/src/main/java/com/nwcring/app/`: `nwc/` the connection string parser (pure
+Kotlin), `vault/` storage and the Keystore cipher, `lock/` the lock state and the
+system prompt, `ui/` the Compose screens, `core/` the log.
+
+`SourceRulesTest` (a unit test that reads `src/main`) is the enforcement. It
+fails the build if: anything but `SafeLog.kt` writes a log line; a payment or
+invoice method name appears anywhere, comments included; the manifest gains a
+permission, an exported component or a link handler; backups are switched on.
+**When Milestone 3 adds networking, replace its no-network rule with the
+one-door rule in the same change, never just delete it.**
+
+- `SecretText` wraps anything that must not print. Parser errors are an enum and
+  carry none of the input.
+- The vault key needs authentication within 30 seconds
+  (`KeystoreCipher.AUTH_WINDOW_SECONDS`). Any code that seals or opens must
+  handle `AuthRequiredException` by prompting and retrying once.
+- The app locks in `onPause`, not `onStop`: `onStop` lags by seconds. The system
+  prompt does not pause the activity; `Authenticator.inProgress` covers the case
+  where it might.
+
+## Build and test
+
+```
+export JAVA_HOME=$(ls -d ~/.jdks/jdk-21* | head -1) ANDROID_HOME=~/android-sdk
+./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease
+```
+
+- The release key and its password are in `~/.config/nwcring/` (never in the
+  repo, never printed). Without them a release build is unsigned.
+- **Only release builds go on Reed's phone.** Debug builds allow screenshots and
+  `run-as`, and install beside the real app as `com.nwcring.app.debug`.
+- The on-device tests (`KeystoreCipherDeviceTest`) need a screen lock, and the
+  round-trip one needs an unlock a few seconds before it starts
+  (`-e unlockedJustNow true`). On the emulator: `adb shell locksettings set-pin
+  1234`, sleep and wake it, type the PIN, then `am instrument`.
+- `SeedClipboardTest` is not a test: it puts made-up text on the emulator's
+  clipboard so the add screen can be driven by hand.
+- Stop the emulator and run `./gradlew --stop` when finished.
 
 ## Protocol facts, checked against the specs on 2026-10-04
 
