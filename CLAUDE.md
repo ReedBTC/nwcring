@@ -4,9 +4,8 @@ An Android app that stores, organizes and health-checks **Nostr Wallet Connect
 (NIP-47) connection strings** from any wallet, in one encrypted place on the
 phone. It is an inventory and health tool, not a wallet.
 
-**Status: Milestone 0 decisions recorded 2026-10-05 (table at the top of
-`PLAN.md`); the package name is still open. No app code yet. Milestone 1 waits
-for Reed's go.**
+**Status: Milestone 1 in progress (Reed's go, 2026-10-05).** Decisions are in the
+table at the top of `PLAN.md`. The package name is `com.nwcring.app`.
 
 **No real connection string ever goes into a chat, a test, a fixture or this
 box.** Wallet tests here run against a fake wallet and fake relay; real
@@ -29,13 +28,14 @@ was used, and remembering where that was).
   his approval before writing that milestone's code.
 - **He discounts praise and trusts pushback.** If a plan, a requirement or this
   file is wrong or out of date, say so directly.
-- **Commit locally freely; ask before every `git push`.**
+- **Commit and push freely.** Reed lifted ask-before-push for this repo on
+  2026-10-05 ("for now"); nothing deploys from it. Publishing a release is a
+  different thing and still needs his say-so.
 - **End a turn by naming whose move it is.** Commands for him are one per block,
   on a single line, with what each should print.
 - **Open decisions are his.** Raise them when they become relevant, never decide
-  silently. Settled ones are recorded in `PLAN.md`. Still open: the package
-  name, the distribution channel after GitHub Releases, and the later-phase
-  features.
+  silently. Settled ones are recorded in `PLAN.md`. Still open: the
+  distribution channel after GitHub Releases, and the later-phase features.
 
 ## Hard lines
 

@@ -1,17 +1,16 @@
 # NWC Ring — Plan
 
-**Decisions recorded 2026-10-05. No app code yet; Milestone 1 waits for Reed's
-go.** Versions and library facts below were looked up on 2026-10-04.
+**Decisions recorded 2026-10-05. Milestone 1 is under way.** Versions and library facts below were looked up on 2026-10-04.
 
 ## Decisions
 
-Settled by Reed on 2026-10-05, except the one marked open.
+Settled by Reed on 2026-10-05.
 
 | # | Decision | Outcome |
 |---|---|---|
 | 1 | Which Nostr library | **Quartz**, pinned to one release. See "The Nostr library" below |
 | 2 | Oldest Android version supported | **Android 11.** Reed's phones are a Pixel 6 (the test phone) and a Pixel 8 (daily), both far newer |
-| 3 | Package name | **Open.** `com.nwcring.app` recommended over `com.reedbtc.nwcring`; see below |
+| 3 | Package name | **`com.nwcring.app`**, named for the project rather than for Reed. Background below |
 | 4 | License | **MIT** |
 | 5 | Backup | **No backup of secrets.** An export of the inventory only (names, wallets, "used in", no secrets) comes later |
 | 6 | How test builds reach the phone | **Installed straight onto the Pixel 6 over USB from this box.** GitHub Releases from Milestone 5, which is how the Pixel 8 and everyone else gets it |
@@ -37,13 +36,10 @@ else picks the same one. Neither `reedbtc.com` nor `nwcring.com` is registered
 by anyone (checked 2026-10-05), so both options below are equally "unowned"
 today.
 
-- `com.reedbtc.nwcring` ties the app to your handle for good, including if the
-  project is ever handed to someone else. It reveals nothing new, since the code
-  already lives at github.com/ReedBTC.
-- `com.nwcring.app` is named for the project, the same way the OnlyBoosts
-  license names the project rather than you. **Recommended.** Registering
-  `nwcring.com` would make it properly yours and costs about the price of a
-  domain per year; the app works the same either way.
+Reed chose `com.nwcring.app`: it names the project, the same way the OnlyBoosts
+license does, and stays true if the project is ever handed to someone else.
+Registering `nwcring.com` would make the name properly his; the app works the
+same either way.
 
 It can still be changed freely until the first public release.
 
