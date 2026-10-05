@@ -47,13 +47,18 @@ can be excluded outright and report the result.
 
 ## Used only to build and test, never shipped in the app
 
+The first five rows are installed on the build box as of 2026-10-05. The rest
+arrive with the first build.
+
 | Tool | Version | Why |
 |---|---|---|
-| Java (Temurin JDK) | 21 | Runs the build |
+| Java (Eclipse Temurin JDK) | 21.0.12.1+1 | Runs the build |
+| Android command-line tools | 23.0 | Installs and manages the rows below |
+| Android platform tools (`adb`) | 37.0.1 | Talks to the emulator and the test phone |
+| Android SDK platform | 37.0 r2 | The Android libraries the app is built against |
+| Android emulator, with the Android 16 (API 36) Google APIs image r7 | 37.2.12 | Running the app and the encryption tests on this box |
 | Gradle | 9.8.0 | The build system |
 | Android Gradle Plugin | 9.4.1 | Builds Android apps |
-| Android SDK platform and build tools | API 37 | The Android libraries the app is built against |
-| Android emulator and one system image | current | Running the app and the encryption tests on this box |
 | JUnit, Kotlin test, coroutines test | matching the above | The automated tests |
 | OkHttp MockWebServer | 5.5.0 | The fake relay inside the test suite |
 

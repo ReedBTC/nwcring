@@ -1,29 +1,51 @@
 # NWC Ring — Plan
 
-**Draft for Reed's review, 2026-10-04. Nothing is built yet.** Versions and
-library facts below were looked up on that date.
+**Decisions recorded 2026-10-05. No app code yet; Milestone 1 waits for Reed's
+go.** Versions and library facts below were looked up on 2026-10-04.
 
-## Decisions needed before Milestone 1
+## Decisions
 
-Each has a recommendation. The first is the one with a real tradeoff.
+Settled by Reed on 2026-10-05, except the one marked open.
 
-| # | Decision | Recommendation |
+| # | Decision | Outcome |
 |---|---|---|
 | 1 | Which Nostr library | **Quartz**, pinned to one release. See "The Nostr library" below |
-| 2 | Oldest Android version supported | **Android 11** (2020). From there Android handles "fingerprint or PIN" for hardware keys one consistent way; older versions need special-case code in exactly the part that should be simplest. Need to know what your own phone runs |
-| 3 | Package name | `com.reedbtc.nwcring`. Permanent once anyone installs the app |
-| 4 | License | **MIT**, same as your other two repos |
-| 5 | Backup | **No backup of secrets.** They are disposable; after a lost phone the right move is revoke and reissue. Worth adding later: an export of the *inventory only* (names, wallets, "used in", no secrets), because after losing the phone that list is what you need in order to know what to revoke |
-| 6 | How test builds reach your phone | **A download link on your home network** for Milestones 1 to 4, **GitHub Releases** from Milestone 5. Keeps unhardened builds of a secrets app off the public internet |
-| 7 | The signing key | Created on this box at Milestone 1, stored outside the repo. **You keep an offline copy and its password.** Lose it and no update can ever install over the existing app |
-| 8 | An Android emulator on this box | **Yes.** It needs one command from you (see "What I need from you") |
+| 2 | Oldest Android version supported | **Android 11.** Reed's phones are a Pixel 6 (the test phone) and a Pixel 8 (daily), both far newer |
+| 3 | Package name | **Open.** `com.nwcring.app` recommended over `com.reedbtc.nwcring`; see below |
+| 4 | License | **MIT** |
+| 5 | Backup | **No backup of secrets.** An export of the inventory only (names, wallets, "used in", no secrets) comes later |
+| 6 | How test builds reach the phone | **Installed straight onto the Pixel 6 over USB from this box.** GitHub Releases from Milestone 5, which is how the Pixel 8 and everyone else gets it |
+| 7 | The signing key | Created on this box at Milestone 1, stored outside the repo. Reed keeps an offline copy and its password; exact steps come with the key |
+| 8 | Emulator and test phone | **Both.** The emulator runs the automated tests unattended. The Pixel 6 is the real thing: a real secure chip and a real fingerprint sensor |
 
-Defaults I will use unless you object: auto-lock after 60 seconds idle and
+Defaults in force unless Reed objects: auto-lock after 60 seconds idle and
 immediately when the app leaves the screen; clipboard cleared 60 seconds after
 a copy; relay addresses that are not encrypted (`ws://`) are refused.
 
-One question, not a decision: **which wallets do you have NWC connections
-from?** That becomes the test list for Milestone 3.
+**Wallets to test against at Milestone 3:** Alby Hub, Minibits, Primal.
+
+### The package name
+
+A package name is the app's permanent ID on Android, written like a web address
+backwards. Almost nobody sees it: it shows in the phone's "App info" screen and
+in app-store web links. Android uses it to tell apps apart, so two apps with the
+same ID cannot both be installed, and an app can never change its ID without
+becoming a different app to every phone that has it.
+
+The convention is to build it from a web domain you own, which guarantees nobody
+else picks the same one. Neither `reedbtc.com` nor `nwcring.com` is registered
+by anyone (checked 2026-10-05), so both options below are equally "unowned"
+today.
+
+- `com.reedbtc.nwcring` ties the app to your handle for good, including if the
+  project is ever handed to someone else. It reveals nothing new, since the code
+  already lives at github.com/ReedBTC.
+- `com.nwcring.app` is named for the project, the same way the OnlyBoosts
+  license names the project rather than you. **Recommended.** Registering
+  `nwcring.com` would make it properly yours and costs about the price of a
+  domain per year; the app works the same either way.
+
+It can still be changed freely until the first public release.
 
 ## The stack, in plain terms
 
@@ -144,9 +166,7 @@ bypassed:
 
 ## Building, testing and getting it onto your phone
 
-- **Builds happen on this box.** I install Java and the Android build tools
-  under your home directory at Milestone 1 (about 6 to 8 GB, no sudo, nothing
-  system-wide, nothing near your bots).
+- **Builds happen on this box**, with the tools described below.
 - **Automated tests** run on this box: the parser against malformed and hostile
   strings, the health-status logic, and the three build checks above.
 - **Real wallets are never used from this box.** Wallet tests here run against
@@ -154,13 +174,15 @@ bypassed:
   paste a real connection string into a chat with me, ever.** Real connections
   only go into the app on your phone.
 - **The emulator** is a pretend Android phone running on this box with no
-  screen. It matters for two reasons. The encryption tests the brief asks for
-  can only run on Android, because the secure key store does not exist anywhere
-  else. And it lets me see the screens I build instead of building blind. It
-  cannot stand in for a real fingerprint sensor or a real secure chip, so your
-  phone remains the final test.
-- **You test on your phone** after each milestone, with written steps. Until
-  Milestone 5 is done, use a throwaway connection with a tiny budget.
+  screen. The encryption tests the brief asks for can only run on Android,
+  because the secure key store does not exist anywhere else, and the emulator
+  lets them run unattended. It also lets me see the screens I build.
+- **The Pixel 6, plugged into this box,** is where builds get installed and
+  where the real secure chip and fingerprint sensor get exercised. It runs in
+  developer mode for this. **While it does, keep only small-budget connections
+  on it.** The Pixel 8 gets the app the normal way at Milestone 5 and never
+  needs developer mode.
+- **You test on the Pixel 6** after each milestone, with written steps.
 
 ## Milestones
 
@@ -176,21 +198,19 @@ from this plan, and install steps. No milestone starts without your go-ahead.
 | **M4** | Rotation helper | Swap in a new secret, work through the re-paste checklist, confirm the old one is dead |
 | **M5** | Hardening, leak review #2, README, first public release | Use it for real |
 
-## What I need from you
+## The build setup on this box
 
-Nothing for this milestone. For Milestone 1, one command so the emulator can
-use this box's virtualisation. It adds your user to one group and changes
-nothing else:
+Installed 2026-10-05, all under Reed's home directory, nothing system-wide:
+Java 21 in `~/.jdks`, the Android tools in `~/android-sdk` (about 6 GB), and one
+virtual Pixel 6 running Android 16. The emulator was started without a screen,
+booted in under a minute, and shut down again. It reports a hardware key store
+and a fingerprint sensor, which the tests can trigger on command.
 
-```
-sudo usermod -aG kvm reed
-```
+Reed added himself to the `kvm` group for this (`sudo usermod -aG kvm reed`;
+undo with `sudo gpasswd -d reed kvm`).
 
-It prints nothing. It takes effect the next time you log in to the box, so the
-Claude session has to be restarted after it. To undo: `sudo gpasswd -d reed kvm`.
-
-The emulator may also want a few system libraries this headless box lacks. I
-will only know when I try it, and will give you the exact command if so.
+Google's installer accepted the Android SDK license on Reed's behalf as part of
+installing. Its usage analytics are off.
 
 ## Things this plan cannot promise yet
 
