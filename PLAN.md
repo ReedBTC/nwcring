@@ -1,7 +1,8 @@
 # NWC Ring — Plan
 
 **Milestone 1 is built and tested on the emulator (2026-10-05); the test on
-Reed's Pixel 6a is next.** Versions and library facts below were looked up on 2026-10-04.
+Reed's Pixel 6a is next.** Installed on the Pixel 6a on 2026-10-08; first
+feedback is in decisions 9 and 10. Versions and library facts below were looked up on 2026-10-04.
 
 ## Decisions
 
@@ -17,6 +18,8 @@ Settled by Reed on 2026-10-05.
 | 6 | How test builds reach the phone | **Installed straight onto the Pixel 6a over USB from this box.** GitHub Releases from Milestone 5, which is how the Pixel 8 and everyone else gets it |
 | 7 | The signing key | Created on this box at Milestone 1, stored outside the repo. Reed keeps an offline copy and its password; exact steps come with the key |
 | 8 | Emulator and test phone | **Both.** The emulator runs the automated tests unattended. The Pixel 6a is the real thing: a real secure chip and a real fingerprint sensor |
+| 9 | How the app unlocks | **NWC Ring gets its own PIN, set on first open**, with fingerprint as a shortcut. Decided 2026-10-08 after trying Milestone 1 on the phone: using the phone's own unlock as the app's unlock is not what wallet-type apps do, and whoever has the phone PIN should not automatically have this app too. Design in Milestone 2 below |
+| 10 | How a connection string gets in | **A paste-into text field as well as the paste button.** Decided 2026-10-08. The field is treated like a password field so the keyboard does not learn from it. Goes into Milestone 2 |
 
 Defaults in force unless Reed objects: auto-lock after 60 seconds idle and
 immediately when the app leaves the screen; clipboard cleared 60 seconds after
@@ -248,7 +251,8 @@ Differences from the plan above, all in the direction of less:
   screens get checked during development. Only release builds go on a phone.
 - **Built against Android 17 libraries, behaving as an Android 16 app.** The
   newest Compose requires the former; the latter matches what the emulator
-  runs. Revisit once the Pixel 6a's Android version is known.
+  runs. The Pixel 6a turned out to run Android 16 too (security patch April
+  2026, checked 2026-10-08), so this needs no change.
 
 Found and fixed by the automatic code checker before it could matter: on
 Android 11 and 12 the code that recognises "the hardware wants a fresh unlock"
