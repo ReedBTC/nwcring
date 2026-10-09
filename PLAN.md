@@ -192,7 +192,7 @@ from this plan, and install steps. No milestone starts without your go-ahead.
 | | What gets built | What you can do at the end |
 |---|---|---|
 | **M1** | Build tools, the app skeleton, the lock, the encrypted vault, add by pasting, list, delete | Install it, unlock with fingerprint, paste a connection, see it listed, delete it |
-| **M2** | Detail screen, names and labels, "used in" lists, reveal and copy with all the clipboard and screen protections | Organise connections, copy one out and paste it into another app |
+| **M2** | The app's own PIN with fingerprint shortcut, the paste-into field, the detail screen, names and labels, "used in" lists, reveal and copy with all the clipboard and screen protections, the real icon | Set a PIN, organise connections, copy one out and paste it into another app |
 | | *Leak review #1, written up in `SECURITY_REVIEW.md`* | |
 | **M3** | Wallet queries and health checks, one at a time and "check all" | See supported methods, balance, budget where the wallet offers it, and an honest status for each connection |
 | **M4** | Rotation helper | Swap in a new secret, work through the re-paste checklist, confirm the old one is dead |
@@ -257,6 +257,125 @@ Differences from the plan above, all in the direction of less:
 Found and fixed by the automatic code checker before it could matter: on
 Android 11 and 12 the code that recognises "the hardware wants a fresh unlock"
 referred to something that only exists from Android 13.
+
+## Milestone 2: the plan
+
+Proposed 2026-10-09. Nothing below is built until Reed says go.
+
+### 1. The app's own PIN (decision 9)
+
+**What you will see.** The first time the app opens it asks you to choose a
+PIN of six or more digits and type it again. If the phone has a fingerprint
+enrolled, a switch offers "Unlock with fingerprint too", on by default. From
+then on the lock screen is a number pad with a fingerprint button. Unlocking,
+and the re-check before revealing or copying a secret, take either one. The
+phone's own PIN or pattern is never accepted as a substitute. Auto-lock stays
+as it is: sixty seconds idle, and the instant the app leaves the screen.
+
+**What changes underneath.** Today each connection is encrypted straight under
+a hardware key that only works for thirty seconds after a phone unlock. In
+Milestone 2 the connections are encrypted under a random vault key, and that
+vault key is kept in two locked copies:
+
+- Copy A is locked by a key stretched from your PIN (PBKDF2 with HMAC-SHA256,
+  built into Android, a random salt and a high iteration count), and then
+  locked again by a hardware key that needs no fingerprint. The second lock
+  means the app's files are useless off the phone even to someone who knows
+  the PIN.
+- Copy B exists only while the fingerprint switch is on. It is locked by a
+  hardware key that the chip will use only right after a fingerprint, with no
+  fallback to the phone's PIN. Enrolling a new fingerprint makes Android
+  destroy that key, which is correct: the app then asks for the PIN once and
+  quietly makes a fresh copy B.
+
+Changing the PIN re-locks copy A only. Turning the fingerprint switch off
+deletes copy B and its hardware key. The thirty-second window disappears for
+the PIN path, so a slow paste-and-name no longer costs a second prompt; it
+remains for the fingerprint path, where it is invisible in practice.
+
+**Wrong PIN.** Five misses are free. After that each miss doubles a wait,
+starting at thirty seconds and capped at an hour, and the wait survives
+closing the app. No wipe-after-N-tries, because that only punishes the owner.
+
+**Forgotten PIN.** There is no recovery and the lock screen says so. A "Start
+over" button, behind a confirmation, wipes the vault. The right follow-up is a
+revoke at each wallet, and the screen says that too.
+
+**What this does and does not defend against.** It stops someone who knows
+your phone PIN from walking into this app. It does not stop someone who has
+rooted your unlocked phone: with the hardware key available to them, a
+six-digit PIN can be guessed by machine in hours. That is the same position
+Phoenix and Zeus are in, and it is bounded by the wallet-side budgets. The
+threat model gets a paragraph saying this.
+
+**Existing data.** The Milestone 1 build on the Pixel 6a holds test entries
+only. The Milestone 2 build recognises the old file format and offers to
+start fresh rather than carrying a migration that nobody needs.
+
+### 2. The paste-into field (decision 10)
+
+The add screen gets a text field above the "Paste from clipboard" button. It
+is a password-style field: the keyboard is told not to learn from it, not to
+suggest for it, and not to show it in clipboard previews. Both routes feed the
+same parser and the same error messages. Nothing typed or pasted there is
+logged, and the existing build check keeps it that way.
+
+### 3. The detail screen, labels and "used in"
+
+Tapping a connection opens it. The screen shows the name, purpose, wallet
+label, relays, the wallet's public key, the Lightning address if there was
+one, the date added, and the "used in" list. Name, purpose and wallet label
+are editable in place. "Used in" is a list of short labels you add and remove
+one at a time ("Amethyst", "Fountain"); it is the memory the rotation helper
+in Milestone 4 will turn into a checklist. The secret is shown as "present,
+hidden" and nothing more. Delete moves here from the list.
+
+### 4. Reveal and copy
+
+Two buttons on the detail screen, each behind a fresh fingerprint-or-PIN
+check every time, with no grace period:
+
+- **Reveal** shows the full connection string for thirty seconds, then hides
+  it again. The screen already refuses screenshots and recent-apps previews in
+  release builds.
+- **Copy** puts the string on the clipboard flagged sensitive, so Android 13
+  and later hide it from the clipboard preview, and clears it sixty seconds
+  later. Whether Android lets the app clear the clipboard while another app is
+  in front is the thing the plan could not promise; it gets tested on the
+  Pixel 6a and the result is written down here either way.
+
+### 5. The icon
+
+Idea 18 from the logo board, built from Reed's NWC.svg (edited 2026-10-08):
+the orange card with the plug cut out and the purple corner, inside a white
+shield, on #121212. It replaces the key-ring icon, with a single-colour
+version for Android's themed icons.
+
+### 6. Checks and the first leak review
+
+- Unit tests: the two-copy vault key round-trips with a fake PIN and a fake
+  chip; a wrong PIN opens nothing; the wait schedule; edits and "used in"
+  changes survive a reload; the old file format is detected.
+- On the emulator: the real chip with a real PIN and a real enrolled
+  fingerprint, including "new fingerprint enrolled" invalidating copy B.
+- The build-time rules keep their teeth: still no network permission, still
+  one place that logs, still no payment method names, plus a new rule that
+  the PIN never reaches the log.
+- **Leak review #1** goes into `SECURITY_REVIEW.md` at the end of the
+  milestone: clipboard, screenshots, the keyboard, crash output, backups,
+  exported components, and the PIN handling.
+
+### Defaults in force unless Reed objects
+
+Six to sixteen digits, numbers only. Reveal lasts thirty seconds. Clipboard
+clears after sixty. Re-check before every reveal or copy. Fingerprint
+shortcut on by default where a fingerprint exists.
+
+### What stays out
+
+No wallet queries or health checks yet; those are Milestone 3, with the
+network permission. No PIN change screen yet unless it falls out cheaply; the
+workaround is "Start over". No export.
 
 ## Where this plan departs from the brief
 
