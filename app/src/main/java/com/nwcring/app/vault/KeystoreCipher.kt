@@ -19,17 +19,27 @@ import javax.crypto.SecretKey
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.GCMParameterSpec
 
+/** When the secure hardware may use a key. */
+sealed interface KeyAuth {
+    /** Any time the phone is on. Used for the key that ties the vault to this phone. */
+    data object None : KeyAuth
+
+    /**
+     * Only within [windowSeconds] of a fingerprint (or other strong biometric) checked by
+     * the phone's own prompt. The phone's PIN is never accepted instead. Enrolling a new
+     * fingerprint destroys the key.
+     */
+    data class Biometric(val windowSeconds: Int) : KeyAuth
+}
+
 /**
  * Encrypts with an AES-256-GCM key that is created inside the phone's secure hardware and
- * never leaves it. The hardware only uses the key within [authWindowSeconds] of the user
- * authenticating with fingerprint, face or the phone's PIN, and it picks the random nonce
- * for every encryption itself. No cryptography is implemented here; this only asks the
- * platform to do it.
+ * never leaves it. The hardware picks the random nonce for every encryption itself. No
+ * cryptography is implemented here; this only asks the platform to do it.
  */
 class KeystoreCipher(
-    private val isDeviceSecure: () -> Boolean,
-    private val alias: String = DEFAULT_ALIAS,
-    private val authWindowSeconds: Int = AUTH_WINDOW_SECONDS,
+    private val alias: String,
+    private val auth: KeyAuth,
 ) : SecretCipher {
 
     private val keyStore: KeyStore by lazy { KeyStore.getInstance(PROVIDER).apply { load(null) } }
@@ -48,21 +58,15 @@ class KeystoreCipher(
 
     override fun open(blob: SealedBlob, context: String): ByteArray = translatingErrors {
         val key = existingKey() ?: throw KeyLostException()
-        val iv = try {
-            Base64.getDecoder().decode(blob.iv)
-        } catch (e: IllegalArgumentException) {
-            throw UnreadableSecretException()
-        }
-        val encrypted = try {
-            Base64.getDecoder().decode(blob.ct)
-        } catch (e: IllegalArgumentException) {
-            throw UnreadableSecretException()
-        }
+        val iv = decode(blob.iv)
+        val encrypted = decode(blob.ct)
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BITS, iv))
         cipher.updateAAD(associatedData(context))
         cipher.doFinal(encrypted)
     }
+
+    fun exists(): Boolean = synchronized(lock) { keyStore.containsAlias(alias) }
 
     override fun keyStorage(): KeyStorage {
         val key = try {
@@ -95,13 +99,18 @@ class KeystoreCipher(
         }
     }
 
+    private fun decode(text: String): ByteArray = try {
+        Base64.getDecoder().decode(text)
+    } catch (e: IllegalArgumentException) {
+        throw UnreadableSecretException()
+    }
+
     private fun existingKey(): SecretKey? = synchronized(lock) {
         keyStore.getKey(alias, null) as? SecretKey
     }
 
     private fun createKey(): SecretKey = synchronized(lock) {
         (keyStore.getKey(alias, null) as? SecretKey)?.let { return it }
-        if (!isDeviceSecure()) throw NoScreenLockException()
         try {
             generate(strongBox = true)
         } catch (e: StrongBoxUnavailableException) {
@@ -110,30 +119,31 @@ class KeystoreCipher(
     }
 
     private fun generate(strongBox: Boolean): SecretKey {
-        val spec = KeyGenParameterSpec.Builder(
+        val builder = KeyGenParameterSpec.Builder(
             alias,
             KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
         )
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setKeySize(256)
-            .setUserAuthenticationRequired(true)
-            .setUserAuthenticationParameters(
-                authWindowSeconds,
-                KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL,
-            )
-            // Adding a fingerprint must not destroy the vault. Removing the screen lock still does.
-            .setInvalidatedByBiometricEnrollment(false)
             .setIsStrongBoxBacked(strongBox)
-            .build()
+        when (auth) {
+            KeyAuth.None -> builder.setUserAuthenticationRequired(false)
+            is KeyAuth.Biometric -> builder
+                .setUserAuthenticationRequired(true)
+                .setUserAuthenticationParameters(auth.windowSeconds, KeyProperties.AUTH_BIOMETRIC_STRONG)
+                // A changed set of fingerprints must not keep unlocking this copy of the vault
+                // key. The PIN copy is unaffected, and the app makes a fresh copy after a PIN.
+                .setInvalidatedByBiometricEnrollment(true)
+        }
         val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, PROVIDER)
-        generator.init(spec)
+        generator.init(builder.build())
         return generator.generateKey()
     }
 
-    private fun associatedData(context: String): ByteArray = "nwcring/v1/$context".toByteArray(Charsets.UTF_8)
+    private fun associatedData(context: String): ByteArray = "nwcring/$alias/$context".toByteArray(Charsets.UTF_8)
 
-    /** Turns the platform's assorted errors into the four outcomes the rest of the app handles. */
+    /** Turns the platform's assorted errors into the outcomes the rest of the app handles. */
     private inline fun <T> translatingErrors(block: () -> T): T = try {
         block()
     } catch (e: UserNotAuthenticatedException) {
@@ -174,8 +184,18 @@ class KeystoreCipher(
             cause.numericErrorCode == android.security.KeyStoreException.ERROR_USER_AUTHENTICATION_REQUIRED
 
     companion object {
-        const val DEFAULT_ALIAS = "nwcring.vault.v1"
-        const val AUTH_WINDOW_SECONDS = 30
+        /** Ties the PIN copy of the vault key to this phone. Usable without a fingerprint. */
+        const val DEVICE_ALIAS = "nwcring.device.v2"
+
+        /** Locks the fingerprint copy of the vault key. */
+        const val BIOMETRIC_ALIAS = "nwcring.biometric.v2"
+
+        /** The Milestone 1 key. Its presence means a test install from before the PIN. */
+        const val OLD_ALIAS = "nwcring.vault.v1"
+
+        /** How long after a fingerprint the chip will still open the fingerprint copy. */
+        const val BIOMETRIC_WINDOW_SECONDS = 10
+
         private const val PROVIDER = "AndroidKeyStore"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private const val TAG_BITS = 128

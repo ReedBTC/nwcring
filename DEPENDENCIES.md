@@ -2,7 +2,12 @@
 
 This file is the record: every library in the app, its exact pinned version,
 and why it is there. Nothing is added without a line here. Updated at
-Milestone 1, 2026-10-05.
+Milestone 2, 2026-10-11: **no library was added.** The PIN stretching
+(PBKDF2-HMAC-SHA256) and the AES-GCM that wraps the vault key come from
+Android's own cryptography provider, the same place the hardware key store is
+driven from. The two icons the screens need (back, close) are drawn in the app
+rather than pulled from Google's icon library, which no longer arrives with
+Compose Material 3 by itself.
 
 ## Libraries that ship inside the app
 
@@ -71,3 +76,5 @@ suite.
 | A navigation library, a dependency-injection framework | Six screens do not need them |
 | Any analytics, crash reporting or ads library | Ruled out by the project's requirements |
 | A QR / camera library | Out of scope for the first version |
+| Compose Material icons | Would add a library for two icons; they are drawn in `AppIcons.kt` instead |
+| A password-hashing library (Argon2, BouncyCastle) | PBKDF2 is built into Android; the round count is measured on each phone to take about 0.4 s |

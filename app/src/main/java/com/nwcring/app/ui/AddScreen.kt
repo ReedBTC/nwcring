@@ -10,8 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -33,9 +34,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.nwcring.app.lock.AuthGateway
-import com.nwcring.app.lock.AuthOutcome
 import com.nwcring.app.nwc.ConnectionStringParser
 import com.nwcring.app.nwc.ParseProblem
 import com.nwcring.app.nwc.ParseResult
@@ -51,28 +53,29 @@ import kotlinx.coroutines.launch
  */
 private class AddFlow(
     private val vault: Vault,
-    private val auth: AuthGateway,
     private val scope: CoroutineScope,
-    private val onAuthenticated: () -> Unit,
     private val clearClipboard: () -> Unit,
     private val onDone: () -> Unit,
 ) {
     var parsed by mutableStateOf<ParsedConnection?>(null)
     var problem by mutableStateOf<ParseProblem?>(null)
+
+    /** What has been pasted into the field, shown as dots. Emptied as soon as it is read. */
+    var typed by mutableStateOf("")
     var name by mutableStateOf("")
     var purpose by mutableStateOf("")
     var walletLabel by mutableStateOf("")
     var clearAfterSaving by mutableStateOf(true)
     var busy by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
-    var keyLost by mutableStateOf(false)
 
-    fun paste(text: String?) {
+    fun read(text: String?) {
         error = null
         when (val result = ConnectionStringParser.parse(text.orEmpty())) {
             is ParseResult.Ok -> {
                 parsed = result.connection
                 problem = null
+                typed = ""
             }
 
             is ParseResult.Invalid -> {
@@ -82,7 +85,7 @@ private class AddFlow(
         }
     }
 
-    fun save(alreadyAsked: Boolean = false) {
+    fun save() {
         val connection = parsed ?: return
         busy = true
         error = null
@@ -93,40 +96,10 @@ private class AddFlow(
                     onDone()
                 }
 
-                AddResult.NeedsAuth -> if (alreadyAsked) {
-                    fail("The phone would not unlock the encryption key. Nothing was saved. Try again.")
-                } else {
-                    auth.request("Confirm it's you to save this connection") { outcome ->
-                        if (outcome == AuthOutcome.SUCCESS) {
-                            onAuthenticated()
-                            save(alreadyAsked = true)
-                        } else {
-                            busy = false
-                        }
-                    }
-                }
-
-                AddResult.NoScreenLock ->
-                    fail("This phone has no screen lock, so the connection can't be protected. Nothing was saved.")
-
-                AddResult.KeyLost -> {
-                    busy = false
-                    keyLost = true
-                }
-
+                AddResult.Locked -> fail("NWC Ring locked before it could save. Unlock and try again.")
                 AddResult.InvalidName -> fail("Give it a name of up to ${Vault.MAX_NAME} characters.")
-
                 AddResult.Failed -> fail("Could not save. Nothing was stored.")
             }
-        }
-    }
-
-    fun replaceLostKeyAndSave() {
-        keyLost = false
-        busy = true
-        scope.launch {
-            vault.replaceLostKey()
-            save()
         }
     }
 
@@ -138,20 +111,13 @@ private class AddFlow(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddScreen(
-    vault: Vault,
-    auth: AuthGateway,
-    onAuthenticated: () -> Unit,
-    onDone: () -> Unit,
-) {
+fun AddScreen(vault: Vault, onDone: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val flow = remember {
         AddFlow(
             vault = vault,
-            auth = auth,
             scope = scope,
-            onAuthenticated = onAuthenticated,
             clearClipboard = { clipboard(context)?.clearPrimaryClip() },
             onDone = onDone,
         )
@@ -174,19 +140,44 @@ fun AddScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(
-                "In your wallet, create or open a connection and copy its connection string. " +
-                    "Then tap the button below. The secret goes straight from the clipboard " +
-                    "into the vault; it is never shown here or typed on the keyboard.",
-            )
-
-            val pasteLabel = if (flow.parsed == null) "Paste from clipboard" else "Paste a different one"
             if (flow.parsed == null) {
-                Button(onClick = { flow.paste(readClipboard(context)) }, enabled = !flow.busy) { Text(pasteLabel) }
-            } else {
-                OutlinedButton(onClick = { flow.paste(readClipboard(context)) }, enabled = !flow.busy) {
-                    Text(pasteLabel)
+                Text(
+                    "In your wallet, create or open a connection and copy its connection string. " +
+                        "Then paste it below, or let NWC Ring read it from the clipboard. It is shown " +
+                        "as dots and kept away from the keyboard's suggestions and history.",
+                )
+                // A password-style field: the keyboard is told not to learn from it, suggest for
+                // it, or show it. Nobody types one of these by hand; this is a second way to paste.
+                OutlinedTextField(
+                    value = flow.typed,
+                    onValueChange = { flow.typed = it.take(ConnectionStringParser.MAX_LENGTH + 1) },
+                    label = { Text("Paste the connection string here") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        autoCorrectEnabled = false,
+                        imeAction = ImeAction.Done,
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { flow.read(flow.typed) }),
+                    trailingIcon = {
+                        TextButton(onClick = { flow.read(flow.typed) }, enabled = flow.typed.isNotBlank() && !flow.busy) {
+                            Text("Use")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Button(onClick = { flow.read(readClipboard(context)) }, enabled = !flow.busy) {
+                    Text("Read it from the clipboard")
                 }
+            } else {
+                OutlinedButton(
+                    onClick = {
+                        flow.parsed = null
+                        flow.problem = null
+                    },
+                    enabled = !flow.busy,
+                ) { Text("Use a different one") }
             }
 
             flow.problem?.let { problem ->
@@ -234,23 +225,6 @@ fun AddScreen(
             }
         }
     }
-
-    if (flow.keyLost) {
-        AlertDialog(
-            onDismissRequest = { flow.keyLost = false },
-            title = { Text("The encryption key is gone") },
-            text = {
-                Text(
-                    "This phone destroyed NWC Ring's encryption key, which happens when the " +
-                        "screen lock is removed. Secrets saved before that can't be recovered; " +
-                        "their names stay in the list so you know what to re-add. Create a new " +
-                        "key and save this connection?",
-                )
-            },
-            confirmButton = { TextButton(onClick = { flow.replaceLostKeyAndSave() }) { Text("Create new key") } },
-            dismissButton = { TextButton(onClick = { flow.keyLost = false }) { Text("Cancel") } },
-        )
-    }
 }
 
 @Composable
@@ -260,7 +234,7 @@ private fun ParsedSummary(connection: ParsedConnection) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Connection read from the clipboard", style = MaterialTheme.typography.titleSmall)
+            Text("Connection found", style = MaterialTheme.typography.titleSmall)
             Text("Relay: " + connection.relays.joinToString(", ") { relayHost(it) })
             Text("Wallet key: " + connection.walletPubkey.take(8) + "…" + connection.walletPubkey.takeLast(8))
             connection.lud16?.let { Text("Lightning address: $it") }

@@ -7,10 +7,11 @@ track of where it was pasted.
 
 It is an inventory and health tool. **It is not a wallet and it never spends.**
 
-> **Status: early development (Milestone 1 of 5).** It can lock, store, list and
-> delete connections. It cannot yet show, copy or health-check them. It has not
-> had its security review. Do not put a connection with a meaningful budget in
-> it yet.
+> **Status: early development (Milestone 2 of 5).** It can lock behind its own
+> PIN or a fingerprint, store, organise, reveal, copy and delete connections. It
+> cannot yet health-check them. It has had one leak review
+> (`SECURITY_REVIEW.md`) but not its final one. Do not put a connection with a
+> meaningful budget in it yet.
 
 ## Why it exists
 
@@ -26,15 +27,20 @@ that purpose, each with its own budget in the wallet. That leaves two problems:
 
 Does, today:
 
-- Locks behind your fingerprint, face or phone PIN. Locks again the moment it
-  leaves the screen and after 60 seconds without a touch.
-- Takes a connection string from the clipboard, checks it, and stores it
-  encrypted by a key held in the phone's secure hardware. The secret is never
-  shown or typed.
-- Lists what you have saved, and deletes entries.
+- Locks behind a PIN of its own, with fingerprint as an optional shortcut. The
+  phone's PIN is never accepted. Locks again the moment it leaves the screen
+  and after 60 seconds without a touch.
+- Takes a connection string pasted into a password-style field or read from the
+  clipboard, checks it, and stores it encrypted under a vault key that is itself
+  locked by your PIN and by the phone's secure hardware.
+- Shows each connection's wallet, relays, notes and a "used in" list of the apps
+  you pasted it into.
+- Reveals or copies a connection only after a fresh fingerprint or PIN check.
+  A revealed one hides again after 30 seconds; a copied one is flagged sensitive
+  and the clipboard is cleared after 60.
 
-Will do (see `PLAN.md`): reveal and copy with clipboard protection, read-only
-wallet queries and health checks, a rotation helper.
+Will do (see `PLAN.md`): read-only wallet queries and health checks, a rotation
+helper.
 
 Never does:
 

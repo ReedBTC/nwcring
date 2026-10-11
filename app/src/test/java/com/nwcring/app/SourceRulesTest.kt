@@ -77,6 +77,56 @@ class SourceRulesTest {
         assertFalse(manifest.contains("<data "))
     }
 
+    @Test fun onlyTheVaultTouchesCryptography() {
+        // One door to the crypto: the two hardware-backed ciphers, the session cipher and the
+        // key ring. Nothing elsewhere derives, wraps or holds a key.
+        val crypto = Regex("""javax\.crypto|java\.security\.(SecureRandom|KeyStore)|PBKDF2|AES/GCM|KeyGenParameterSpec""")
+        assertEquals(
+            emptyList<String>(),
+            offenders(crypto, except = setOf("KeystoreCipher.kt", "SessionCipher.kt", "KeyRing.kt")),
+        )
+    }
+
+    @Test fun thePinNeverPassesThroughAKeyboardOrALogLine() {
+        // The PIN is typed on the app's own pad, never into a text field a keyboard app can see.
+        val pinScreens = sources.filter { it.name in setOf("PinPad.kt", "LockScreen.kt", "SetupScreen.kt", "ReAuth.kt") }
+        assertEquals(4, pinScreens.size)
+        for (file in pinScreens) {
+            assertFalse("${file.name} must not use a text field", file.readText().contains("TextField"))
+        }
+        // No log line or note is ever given a PIN, a key or a secret as a fact.
+        val logged = Regex("""(note|event)\(.*\b(pin|key|secret|digits|plain)\b\s*(to|,)""", RegexOption.IGNORE_CASE)
+        assertEquals(emptyList<String>(), offenders(logged))
+    }
+
+    @Test fun thePasteFieldIsAPasswordField() {
+        val add = sources.single { it.name == "AddScreen.kt" }.readText()
+        assertTrue(add.contains("PasswordVisualTransformation()"))
+        assertTrue(add.contains("KeyboardType.Password"))
+        assertTrue(add.contains("autoCorrectEnabled = false"))
+    }
+
+    @Test fun theRevealedSecretCannotBeCopiedByLongPress() {
+        // A selectable secret could be copied through Android's own menu, with no sensitive
+        // flag and no timed clear. Only public fields may sit inside a SelectionContainer.
+        val detail = sources.single { it.name == "DetailScreen.kt" }.readText()
+        val revealBlock = detail.substringAfter("val shown = revealed").substringBefore("Row(")
+        assertFalse(revealBlock.contains("SelectionContainer"))
+    }
+
+    @Test fun onlyTheSecretClipboardPutsASecretOnTheClipboard() {
+        assertEquals(emptyList<String>(), offenders(Regex("""setPrimaryClip\("""), except = setOf("SecretClipboard.kt")))
+        val clipboard = sources.single { it.name == "SecretClipboard.kt" }.readText()
+        assertTrue(clipboard.contains("EXTRA_IS_SENSITIVE"))
+        assertTrue(clipboard.contains("clearPrimaryClip()"))
+    }
+
+    @Test fun lockingForgetsTheVaultKeyAndThePhonesOwnPinIsNeverAccepted() {
+        val app = sources.single { it.name == "NwcRingApp.kt" }.readText()
+        assertTrue(app.contains("onLocked = { keyRing.lock() }"))
+        assertEquals(emptyList<String>(), offenders(Regex("""DEVICE_CREDENTIAL""")))
+    }
+
     @Test fun screenshotsAreBlockedForTheWholeWindow() {
         val activity = sources.single { it.name == "MainActivity.kt" }.readText()
         assertTrue(activity.contains("FLAG_SECURE"))

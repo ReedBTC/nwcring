@@ -4,8 +4,9 @@ An Android app that stores, organizes and health-checks **Nostr Wallet Connect
 (NIP-47) connection strings** from any wallet, in one encrypted place on the
 phone. It is an inventory and health tool, not a wallet.
 
-**Status: Milestone 1 is built and passes on the emulator (2026-10-05). It still
-has to be installed and tried on Reed's Pixel 6a before it counts as done.**
+**Status: Milestone 2 is built and passes on the emulator (2026-10-11). It still
+has to be tried on Reed's Pixel 6a before it counts as done.** Milestone 1 was
+tried there on 2026-10-08.
 Decisions are in the table at the top of `PLAN.md`. The package name is
 `com.nwcring.app`.
 
@@ -53,9 +54,10 @@ around it.
 - **Secrets at rest** are encrypted under a key held in Android Keystore
   (hardware-backed where available). Non-secret metadata may live in normal app
   storage.
-- **Unlock** by biometric or device credential to open the app, and again before
-  revealing or copying a secret. Auto-lock after a short timeout and on
-  backgrounding.
+- **Unlock** by the app's own PIN (decision 9, 2026-10-08) or a fingerprint
+  shortcut; the phone's PIN or pattern is never accepted. Again before revealing
+  or copying a secret, and that check re-opens a locked copy of the vault key.
+  Auto-lock after a short timeout and on backgrounding; locking wipes the key.
 - **Secrets are hidden by default**, shown only after an explicit tap plus
   re-authentication. `FLAG_SECURE` on every screen that can show one.
 - **Clipboard**: copied secrets are flagged sensitive (Android 13+) and cleared
@@ -93,21 +95,34 @@ review goes into `SECURITY_REVIEW.md` at M5, and ideally after M2.
 ## Layout and the three chokepoints
 
 `app/src/main/java/com/nwcring/app/`: `nwc/` the connection string parser (pure
-Kotlin), `vault/` storage and the Keystore cipher, `lock/` the lock state and the
-system prompt, `ui/` the Compose screens, `core/` the log.
+Kotlin), `vault/` storage, the key ring and the three ciphers, `lock/` the lock
+state and the fingerprint prompt, `ui/` the Compose screens, `core/` the log and
+the clipboard.
+
+The vault key: `KeyRing` holds it in memory while unlocked and on disk in two
+locked copies (PIN-stretched then device-key-wrapped; fingerprint-key-wrapped).
+`SessionCipher` encrypts connections under it. `KeystoreCipher(alias, KeyAuth)`
+is the hardware wrapper for both copies. PBKDF2 rounds are calibrated per phone
+at set-up (`KeyRing.calibrateIterations`) and stored in `keyring.json`.
 
 `SourceRulesTest` (a unit test that reads `src/main`) is the enforcement. It
 fails the build if: anything but `SafeLog.kt` writes a log line; a payment or
 invoice method name appears anywhere, comments included; the manifest gains a
-permission, an exported component or a link handler; backups are switched on.
+permission, an exported component or a link handler; backups are switched on;
+crypto appears outside the three cipher files; a PIN screen uses a text field;
+the paste field stops being a password field; anything but `SecretClipboard.kt`
+writes the clipboard; the revealed secret becomes selectable; the phone's
+device credential is ever allowed as an authenticator.
 **When Milestone 3 adds networking, replace its no-network rule with the
 one-door rule in the same change, never just delete it.**
 
 - `SecretText` wraps anything that must not print. Parser errors are an enum and
   carry none of the input.
-- The vault key needs authentication within 30 seconds
-  (`KeystoreCipher.AUTH_WINDOW_SECONDS`). Any code that seals or opens must
-  handle `AuthRequiredException` by prompting and retrying once.
+- The fingerprint key works for 10 seconds after a fingerprint
+  (`KeystoreCipher.BIOMETRIC_WINDOW_SECONDS`): the prompt comes first, then the
+  key ring call, and `BiometricResult.NeedsFingerprint` means prompt again once.
+  The device key needs no authentication. The PIN path needs no window at all.
+- `ReAuth` is the one place that runs the fresh check before reveal or copy.
 - The app locks in `onPause`, not `onStop`: `onStop` lags by seconds. The system
   prompt does not pause the activity; `Authenticator.inProgress` covers the case
   where it might.
@@ -123,10 +138,18 @@ export JAVA_HOME=$(ls -d ~/.jdks/jdk-21* | head -1) ANDROID_HOME=~/android-sdk
   repo, never printed). Without them a release build is unsigned.
 - **Only release builds go on Reed's phone.** Debug builds allow screenshots and
   `run-as`, and install beside the real app as `com.nwcring.app.debug`.
-- The on-device tests (`KeystoreCipherDeviceTest`) need a screen lock, and the
-  round-trip one needs an unlock a few seconds before it starts
-  (`-e unlockedJustNow true`). On the emulator: `adb shell locksettings set-pin
-  1234`, sleep and wake it, type the PIN, then `am instrument`.
+- **Two devices are usually attached** (the Pixel and the emulator): every adb
+  call needs `-s emulator-5554` or `-s 26201JEGR08803`. Never install a debug or
+  test APK on the Pixel.
+- The emulator AVD has PIN 1234 and one enrolled fingerprint (`adb -s
+  emulator-5554 emu finger touch 1` touches the sensor). After a boot, unlock it
+  once (wake, menu, type 1234, enter) or apps refuse to start ("not encryption
+  aware"). The fingerprint device test needs `-e fingerprintEnrolled true` and
+  no fingerprint touched in the previous 10 seconds.
+- `scratchpad/ui.sh` from the Milestone 2 session drove the screens by text
+  (`uiautomator dump` plus `input tap`); rebuild something like it if needed.
+  Text with `&` must be single-quoted for the device shell, and spaces typed
+  with `input text` are `%s`.
 - `SeedClipboardTest` is not a test: it puts made-up text on the emulator's
   clipboard so the add screen can be driven by hand.
 - Stop the emulator and run `./gradlew --stop` when finished.

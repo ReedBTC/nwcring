@@ -1,10 +1,8 @@
 package com.nwcring.app
 
-import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -13,8 +11,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import com.nwcring.app.core.SafeLog
-import com.nwcring.app.lock.AuthAvailability
-import com.nwcring.app.lock.AuthOutcome
 import com.nwcring.app.lock.Authenticator
 import com.nwcring.app.ui.AppRoot
 import com.nwcring.app.ui.NwcRingTheme
@@ -41,13 +37,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             NwcRingTheme {
-                AppRoot(
-                    vault = graph.vault,
-                    lock = graph.lock,
-                    auth = authenticator,
-                    visits = visits,
-                    onOpenSecuritySettings = { startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS)) },
-                )
+                AppRoot(graph = graph, auth = authenticator, visits = visits)
             }
         }
     }
@@ -56,19 +46,14 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         inFront = true
         visits++
-        // Coming to the screen while locked: ask straight away rather than wait for a tap.
-        if (graph.lock.locked.value && authenticator.availability() == AuthAvailability.READY) {
-            authenticator.request("Unlock your connections") { outcome ->
-                if (outcome == AuthOutcome.SUCCESS) graph.lock.unlocked()
-            }
-        }
+        graph.clipboard.clearIfOverdue()
     }
 
     override fun onPause() {
         super.onPause()
         inFront = false
         // Leaving the screen locks the app at once. The one exception is the phone's own
-        // fingerprint / PIN prompt sitting on top of the app, which is not leaving.
+        // fingerprint prompt sitting on top of the app, which is not leaving.
         if (!isChangingConfigurations && !authenticator.inProgress) lockNow("paused")
     }
 

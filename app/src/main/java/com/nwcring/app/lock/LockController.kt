@@ -6,11 +6,13 @@ import kotlinx.coroutines.flow.StateFlow
 /**
  * Decides whether the app is locked. It starts locked, locks when told the app left the
  * screen, and locks itself after [idleLimitMs] without a touch. [nowMs] must be a clock
- * that cannot be changed by the user (time since boot).
+ * that cannot be changed by the user (time since boot). [onLocked] runs on every lock and
+ * is where the vault key gets forgotten.
  */
 class LockController(
     private val nowMs: () -> Long,
     private val idleLimitMs: Long = IDLE_LIMIT_MS,
+    private val onLocked: () -> Unit = {},
 ) {
     private val _locked = MutableStateFlow(true)
     val locked: StateFlow<Boolean> = _locked
@@ -25,6 +27,7 @@ class LockController(
 
     fun lock() {
         _locked.value = true
+        onLocked()
     }
 
     fun touched() {

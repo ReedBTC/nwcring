@@ -5,20 +5,22 @@ import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricPrompt
 import android.os.CancellationSignal
 
-enum class AuthAvailability { READY, NO_SCREEN_LOCK, UNAVAILABLE }
+enum class BiometricAvailability { READY, NONE_ENROLLED, UNAVAILABLE }
 
-enum class AuthOutcome { SUCCESS, CANCELLED, FAILED }
+enum class AuthOutcome { SUCCESS, USE_PIN, CANCELLED, FAILED }
 
-/** What the screens use to ask "is it really you?". The activity provides the real one. */
+/** What the screens use to ask the phone for a fingerprint. The activity provides the real one. */
 interface AuthGateway {
-    fun availability(): AuthAvailability
+    fun biometrics(): BiometricAvailability
 
     fun request(reason: String, onOutcome: (AuthOutcome) -> Unit)
 }
 
 /**
- * Shows Android's own fingerprint / face / PIN prompt. The app never sees the fingerprint
- * or the PIN; it is only told whether the phone accepted them.
+ * Shows Android's own fingerprint prompt, with "Use PIN" as the only other way out. The
+ * phone's PIN or pattern is never offered: NWC Ring's PIN is its own. The app never sees
+ * the fingerprint; it is only told whether the phone accepted it, and the secure chip
+ * then allows the fingerprint copy of the vault key to be used for a few seconds.
  */
 class Authenticator(
     private val activity: Activity,
@@ -28,13 +30,13 @@ class Authenticator(
     var inProgress = false
         private set
 
-    override fun availability(): AuthAvailability {
+    override fun biometrics(): BiometricAvailability {
         val manager = activity.getSystemService(BiometricManager::class.java)
-            ?: return AuthAvailability.UNAVAILABLE
-        return when (manager.canAuthenticate(ALLOWED)) {
-            BiometricManager.BIOMETRIC_SUCCESS -> AuthAvailability.READY
-            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> AuthAvailability.NO_SCREEN_LOCK
-            else -> AuthAvailability.UNAVAILABLE
+            ?: return BiometricAvailability.UNAVAILABLE
+        return when (manager.canAuthenticate(STRONG)) {
+            BiometricManager.BIOMETRIC_SUCCESS -> BiometricAvailability.READY
+            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> BiometricAvailability.NONE_ENROLLED
+            else -> BiometricAvailability.UNAVAILABLE
         }
     }
 
@@ -44,8 +46,13 @@ class Authenticator(
         val prompt = BiometricPrompt.Builder(activity)
             .setTitle("NWC Ring")
             .setSubtitle(reason)
-            .setAllowedAuthenticators(ALLOWED)
+            .setAllowedAuthenticators(STRONG)
             .setConfirmationRequired(false)
+            .setNegativeButton("Use PIN", activity.mainExecutor) { _, _ ->
+                inProgress = false
+                onPromptClosedWithoutSuccess()
+                onOutcome(AuthOutcome.USE_PIN)
+            }
             .build()
         val callback = object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
@@ -65,7 +72,6 @@ class Authenticator(
     }
 
     companion object {
-        private const val ALLOWED =
-            BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        private const val STRONG = BiometricManager.Authenticators.BIOMETRIC_STRONG
     }
 }

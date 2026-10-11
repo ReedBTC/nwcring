@@ -1,8 +1,8 @@
 # NWC Ring — Plan
 
-**Milestone 1 is built and tested on the emulator (2026-10-05); the test on
-Reed's Pixel 6a is next.** Installed on the Pixel 6a on 2026-10-08; first
-feedback is in decisions 9 and 10. Versions and library facts below were looked up on 2026-10-04.
+**Milestone 2 is built and tested on the emulator (2026-10-11); the test on
+Reed's Pixel 6a is next.** Milestone 1 was installed on the Pixel 6a on
+2026-10-08; its first feedback became decisions 9 and 10. Versions and library facts below were looked up on 2026-10-04.
 
 ## Decisions
 
@@ -260,7 +260,8 @@ referred to something that only exists from Android 13.
 
 ## Milestone 2: the plan
 
-Proposed 2026-10-09. Nothing below is built until Reed says go.
+Proposed 2026-10-09, approved by Reed on 2026-10-10. What was built, and where
+it differs, is in the section after this one.
 
 ### 1. The app's own PIN (decision 9)
 
@@ -376,6 +377,53 @@ shortcut on by default where a fingerprint exists.
 No wallet queries or health checks yet; those are Milestone 3, with the
 network permission. No PIN change screen yet unless it falls out cheaply; the
 workaround is "Start over". No export.
+
+## Milestone 2: what was built, and where it differs from the plan
+
+Built 2026-10-10 and 2026-10-11: the app's own PIN with the fingerprint
+shortcut, the paste-into field, the detail screen with editing and "used in",
+reveal and copy with their protections, Settings, "start over", the new icon,
+and the first leak review (`SECURITY_REVIEW.md`). 84 automated tests run on the
+build box and 3 against the real key store on the emulator; all pass. Every
+screen and every path below was exercised on the emulator with the release
+build, including fingerprint unlock with a fingerprint enrolled on the emulator.
+
+Differences from the plan, and things learned:
+
+- **The PIN stretching measures the phone instead of using a fixed count.** The
+  plan said "a high iteration count". A fixed 310,000 rounds took over six
+  seconds per check on the emulator the first time it ran. The app now times a
+  short sample at set-up and picks a round count that takes about 0.4 seconds
+  on that phone, never below 60,000. The count is stored with the file, so a
+  later phone or a later version can use a different one without breaking old
+  files. On the emulator it chose 60,000 to 125,000; the Pixel will choose its
+  own.
+- **The fingerprint step comes after the PIN, not beside it.** The phone's
+  secure chip will only make the fingerprint copy of the vault key right after
+  a fingerprint, so set-up asks for the PIN first, then offers the fingerprint
+  with one touch of the sensor. The same applies when turning it on later in
+  Settings. The plan's "switch on the first screen" would have needed two
+  prompts in a row.
+- **A Settings screen exists** (fingerprint on or off, where the key lives,
+  start over, version). The plan had no home for the fingerprint switch.
+- **Clipboard clearing from the background works**, measured on the Android 16
+  emulator with the app behind another app: pasteable right after the copy,
+  gone after the clear. One run on a busy emulator fired 49 seconds late, so the
+  app also clears on its next return to the screen if the deadline has passed.
+- **One leak found and fixed during the review:** the revealed connection
+  string was selectable, so a long-press could copy it through Android's own
+  menu with no sensitive flag and no timed clear. It is no longer selectable,
+  and a build check keeps it that way.
+- **"Start over" also exists on the lock screen** ("Forgot your PIN?") and on the
+  screen that greets a Milestone 1 install, so a test phone with the old format
+  gets a clean path to the new one. Tested by installing this build over the
+  Milestone 1 build on the emulator.
+- **No PIN change screen**, as the plan allowed. Start over is the workaround.
+- **No new library.** The two icons the screens use are drawn in the app.
+
+Still to be measured on the Pixel 6a: the round count the calibration picks,
+how the real fingerprint sensor and secure chip behave, and the clipboard clear
+on real hardware.
 
 ## Where this plan departs from the brief
 

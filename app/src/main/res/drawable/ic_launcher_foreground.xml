@@ -1,25 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A key ring with two keys hanging from it. Drawn inside the 66dp safe zone. -->
+<!-- NWC Ring's icon: Reed's NWC mark (the orange card with the plug cut out, and the purple
+     corner) inside a white shield, drawn from nwcring-icon-18.svg (2026-10-08). The visible
+     circle of an adaptive icon is the centre 72 of this 108 viewport. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
         android:fillColor="#00000000"
-        android:pathData="M54,30a14,14 0,1 0,0.01 0z"
+        android:pathData="M54,24L80,33V54C80,70 68,80 54,86C40,80 28,70 28,54V33Z"
         android:strokeWidth="5"
-        android:strokeColor="#F5A623" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M46,56L40,78M40,78l5,1.4M41.6,72l5,1.4"
-        android:strokeWidth="4"
-        android:strokeLineCap="round"
-        android:strokeColor="#F2F2F2" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M62,56L68,78M68,78l-5,1.4M66.4,72l-5,1.4"
-        android:strokeWidth="4"
-        android:strokeLineCap="round"
-        android:strokeColor="#F2F2F2" />
+        android:strokeColor="#FFFFFF"
+        android:strokeLineJoin="round" />
+    <group
+        android:pivotX="83.65"
+        android:pivotY="74.4"
+        android:scaleX="0.44"
+        android:scaleY="0.44"
+        android:translateX="-29.65"
+        android:translateY="-19.40">
+        <path
+            android:fillColor="#8D83FF"
+            android:pathData="M 92.644131,44.890766 105.33065,32.334364 c 2.59527,-2.39722 7.53176,-1.228103 8.63659,1.219858 l 15.24009,38.856534 c 0.59863,3.382379 -4.46369,4.195132 -5.98543,2.537304 z" />
+        <path android:pathData="M 41.03283,62.957461 65.230788,39.035527 c 4.54732,-3.59408 8.390548,-2.78758 11.960966,-0.276021 l 41.587366,41.587359 c 1.97418,1.62292 4.2495,2.573942 6.71654,0.552045 l -13.89312,14.077133 c -1.73625,1.79479 -3.75378,1.76125 -5.98049,0.36803 l -9.476763,-8.92472 c 1.996798,-4.915517 0.93874,-9.282729 -1.840151,-13.341074 l -6.072489,-5.980483 c -0.660144,-0.410249 -1.309642,-0.873725 -2.208178,-0.09201 l -2.576208,2.484202 -6.256507,-5.980485 c -1.48082,-1.077555 -2.595246,-0.689535 -3.58829,0.184015 -0.5709,0.740785 -1.006232,1.535797 -0.36803,2.760223 l 6.532528,6.808552 -3.864311,3.95632 -6.440522,-6.256507 c -0.797395,-0.613776 -2.354958,-0.877334 -3.588289,0.36803 -0.959916,1.277499 -0.690047,2.155326 -0.184015,2.85223 l 6.394515,6.716543 -2.530202,2.300187 c -0.878002,0.828361 -1.207696,1.658364 -0.230019,2.806227 0,0 4.913564,5.10302 5.290427,5.38243 7.122804,5.28101 11.242902,3.27951 13.893122,2.30019 l 9.292752,9.200737 c 1.706393,1.33347 4.25445,1.19265 5.88106,-0.0356 l -10.962838,11.00628 c -5.924044,5.08456 -10.313334,2.29154 -13.043686,-0.11385 L 41.21685,75.286457 c -3.71934,-4.050796 -3.1473,-8.840608 -0.18402,-12.328996 z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="radial"
+                    android:centerX="68.031975"
+                    android:centerY="34.826725"
+                    android:gradientRadius="62.568115">
+                    <item android:color="#f8d19a" android:offset="0.000" />
+                    <item android:color="#f7941b" android:offset="0.899" />
+                </gradient>
+            </aapt:attr>
+        </path>
+    </group>
 </vector>

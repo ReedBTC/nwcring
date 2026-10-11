@@ -8,8 +8,9 @@ features not built yet (copying out, health checks) say what the app will do.
 ## The short version
 
 - NWC Ring keeps your Nostr Wallet Connect connection strings in one place on
-  your phone, encrypted with a key that lives in the phone's secure hardware and
-  only works after you unlock with fingerprint, face or your phone's PIN.
+  your phone, encrypted under a vault key that is itself locked twice: by a PIN
+  that belongs to NWC Ring (not the phone's PIN) and by the phone's secure
+  hardware. A fingerprint can stand in for the PIN if you switch that on.
 - Putting every connection in one place makes that place worth attacking. That
   is the central tradeoff of the app and it is accepted on purpose.
 - **The most anyone can take with a stolen connection is what the wallet lets
@@ -34,8 +35,9 @@ Saying these out loud matters more than the list of protections.
 
 - **A phone that is already compromised**: rooted, running malware with system
   privileges, or a malicious keyboard. Anything you can see or paste, it can too.
-- **Someone who knows your phone PIN and has your phone.** They are you, as far
-  as the phone can tell.
+- **Someone who knows your NWC Ring PIN and has your phone.** They are you, as
+  far as the app can tell. (Knowing only the phone's PIN is not enough: that was
+  the point of giving the app its own, decided 2026-10-08.)
 - **The apps you paste a connection into.** Once a secret is pasted into another
   app, that app's security is what protects that copy.
 - **The wallet itself.** It holds the money and issues the secrets.
@@ -45,12 +47,23 @@ Saying these out loud matters more than the list of protections.
 
 ### The phone is lost or stolen while locked
 
-The secrets are encrypted on disk and the key is held by the phone's secure
-hardware, which refuses to use it without your fingerprint, face or PIN. Pulling
-the storage out of the phone gets an attacker encrypted data and no key.
+The secrets are encrypted on disk under a vault key that is stored only in two
+locked copies. One is locked by your NWC Ring PIN (stretched with PBKDF2 so
+each guess costs about half a second) and then by a key inside the phone's
+secure hardware. The other, if you turned fingerprint unlock on, is locked by a
+hardware key that only works for a few seconds after a fingerprint. Pulling the
+storage out of the phone gets an attacker encrypted data and no key. Guessing
+the PIN on the phone is slowed down: five tries are free, then each miss doubles
+a wait that starts at thirty seconds and caps at an hour.
 
-*Left over:* the strength of this is the strength of your phone's lock screen.
-A weak PIN is a weak vault.
+*Left over:* someone who gets past the phone's own lock screen can try PINs,
+slowly. Someone who roots the unlocked phone has the hardware key available and
+can guess a six-digit PIN by machine in hours, because the stretching is the
+only thing in their way at that point. That is the same position Phoenix and
+Zeus are in, and it is bounded by the wallet-side budgets. A longer PIN helps:
+each extra digit multiplies the work by ten. The wait after wrong PINs is
+enforced by the app, not the hardware, so moving the phone's clock forward after
+force-stopping the app can shorten it; the stretching cannot be skipped.
 
 *What you should do:* revoke every connection in the wallets and issue new ones.
 Connection secrets are disposable, and that is the right response whether or not
@@ -61,8 +74,10 @@ wallets, no secrets); see the open decisions in `PLAN.md`.
 ### The phone is taken while unlocked and the app is open
 
 The app locks itself after 60 seconds without a touch and the moment it leaves
-the screen. Seeing or copying a secret asks for your fingerprint or PIN again, every
-time, even when the app is already open.
+the screen, and locking wipes the vault key from memory. Seeing or copying a
+secret asks for your fingerprint or NWC Ring PIN again, every time, even when
+the app is already open, and the check is real: it re-opens a locked copy of the
+vault key rather than just flipping a flag.
 
 *Left over:* the names, purposes and "used in" lists are visible while the app
 is open. The secrets are not.
@@ -110,9 +125,20 @@ is unavoidable: pasting it into another app is the whole point.
 *Left over, and it is real:* the app you paste into reads the secret, which is
 intended. **Some keyboards keep their own clipboard history, and no app can
 clear that.** If your keyboard has a clipboard history feature, a copied secret
-may sit in it. Clearing after a delay also depends on Android letting the app
-act a minute later while it is in the background; this will be tested on a real
-phone at Milestone 2 and reported honestly.
+may sit in it. Clearing after a delay depends on Android letting the app act a
+minute later while it is in the background. **Measured on the Android 16
+emulator on 2026-10-10: it works.** The string was pasteable in another app
+right after the copy and gone after the clear, with NWC Ring in the background
+throughout. Android can pause a backgrounded app's timers, so as a backstop the
+app also clears the clipboard the next time it comes to the screen if the
+deadline has passed. The clear is unconditional: anything you copied in the
+meantime goes too.
+
+The revealed string on the detail screen is deliberately not selectable, so the
+only way to copy it is the Copy button with the protections above. Pasting a
+connection *into* NWC Ring goes through a password-style field, which tells the
+keyboard not to learn from it or suggest it; what the keyboard does with its own
+clipboard history is, again, the keyboard's business.
 
 ### Screenshots, screen recording, the recent-apps view, casting
 

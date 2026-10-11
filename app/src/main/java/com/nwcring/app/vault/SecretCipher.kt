@@ -1,22 +1,22 @@
 package com.nwcring.app.vault
 
-/** The hardware wants a fresh fingerprint / face / PIN before it will use the key. */
+/** The hardware wants a fresh fingerprint before it will use the key. */
 class AuthRequiredException : Exception()
 
-/** The key was destroyed (for example the screen lock was removed). Old secrets are gone. */
+/** The key was destroyed (for example a fingerprint was added or removed). Its copy is gone. */
 class KeyLostException : Exception()
-
-/** The phone has no secure screen lock, so a protected key cannot be created. */
-class NoScreenLockException : Exception()
 
 /** The stored value could not be decrypted with the current key. */
 class UnreadableSecretException : Exception()
 
+/** The vault key is not in memory: the app is locked. */
+class VaultLockedException : Exception()
+
 enum class KeyStorage { NOT_CREATED, STRONGBOX, TRUSTED_ENVIRONMENT, SOFTWARE, UNKNOWN }
 
-/** Encrypts and decrypts secrets. The real one is backed by the phone's secure hardware. */
+/** Encrypts and decrypts. The hardware-backed ones wrap the vault key; the session one holds it. */
 interface SecretCipher {
-    /** [context] ties the result to one entry, so a blob cannot be swapped onto another. */
+    /** [context] ties the result to one use, so a blob cannot be swapped into another. */
     fun seal(plain: ByteArray, context: String): SealedBlob
 
     fun open(blob: SealedBlob, context: String): ByteArray
