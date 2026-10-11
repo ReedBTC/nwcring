@@ -146,10 +146,10 @@ export JAVA_HOME=$(ls -d ~/.jdks/jdk-21* | head -1) ANDROID_HOME=~/android-sdk
   once (wake, menu, type 1234, enter) or apps refuse to start ("not encryption
   aware"). The fingerprint device test needs `-e fingerprintEnrolled true` and
   no fingerprint touched in the previous 10 seconds.
-- `scratchpad/ui.sh` from the Milestone 2 session drove the screens by text
-  (`uiautomator dump` plus `input tap`); rebuild something like it if needed.
-  Text with `&` must be single-quoted for the device shell, and spaces typed
-  with `input text` are `%s`.
+- `tools/ui.sh` drives the emulator's screens by text (`uiautomator dump` plus
+  `input tap`): `dump`, `tap "Text"`, `pin 123456`, `shot name`. Text with `&`
+  must be single-quoted for the device shell, and spaces typed with `input
+  text` are `%s`.
 - `SeedClipboardTest` is not a test: it puts made-up text on the emulator's
   clipboard so the add screen can be driven by hand.
 - Stop the emulator and run `./gradlew --stop` when finished.
